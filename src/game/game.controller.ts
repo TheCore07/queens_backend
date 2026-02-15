@@ -9,4 +9,9 @@ export class GameController {
   queensBoard() {
     return this.gameService.createBoard(8);
   }
+
+  @Get('daily')
+  queensDaily() {
+    return this.gameService.getDailyGame();
+  }
 }
