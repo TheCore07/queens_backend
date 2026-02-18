@@ -16,16 +16,23 @@ export class GameService {
     return generateQueensBoard(size);
   }
 
+  getInfinityGame(): QueensBoard {
+    const randomSize = this.getRandomSize();
+    return this.createBoard(randomSize);
+  }
+
   async getDailyGame(): Promise<QueensBoard> {
     const currentDate = this.getCurrentDateString();
 
-    return (await this.gameModel.findOne({ date: currentDate })) as QueensBoard;
+    return (await this.gameModel.findOne({
+      date: currentDate,
+    })) as QueensBoard;
   }
 
   @Cron('0 0 9 * * *')
   // @Cron('45 * * * * *')
   async createDailyGame() {
-    const boardSize = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
+    const boardSize = this.getRandomSize();
     const queensBoard = this.createBoard(boardSize);
 
     const game = new Game();
@@ -49,5 +56,11 @@ export class GameService {
     const day = String(date.getDate()).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
+  }
+
+  getRandomSize(): number {
+    const min = 5; // the minimal board size
+    const max = 9; // the maximal board size
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 }

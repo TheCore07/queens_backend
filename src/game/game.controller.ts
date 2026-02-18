@@ -14,4 +14,9 @@ export class GameController {
   queensDaily() {
     return this.gameService.getDailyGame();
   }
+
+  @Get('infinity')
+  queensInfinity() {
+    return this.gameService.getInfinityGame();
+  }
 }
