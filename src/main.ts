@@ -6,9 +6,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: new ConsoleLogger(),
   });
 
@@ -30,9 +31,10 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+  
   app.enableCors({
-    origin:
-      configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173',
+    origin: frontendUrl,
     credentials: true,
   });
 
@@ -46,12 +48,30 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  // If we are on Vercel, we don't call listen, we return the express instance
+  if (process.env.VERCEL) {
+    await app.init();
+    return app.getHttpAdapter().getInstance();
+  }
+
   const port = configService.get<number>('PORT') ?? 3000;
   await app.listen(port);
-  console.log(`Application is running on: ${await app.getUrl()}`);
-  console.log(`Swagger documentation available at: ${await app.getUrl()}/api`);
+  console.log(`Application is running on: http://localhost:${port}`);
 }
-bootstrap().catch((err) => {
-  console.error('Error starting application:', err);
-  process.exit(1);
-});
+
+// Export for Vercel
+let server: any;
+export default async (req: any, res: any) => {
+  if (!server) {
+    server = await bootstrap();
+  }
+  return server(req, res);
+};
+
+// Local development
+if (!process.env.VERCEL) {
+  bootstrap().catch((err) => {
+    console.error('Error starting application:', err);
+    process.exit(1);
+  });
+}
