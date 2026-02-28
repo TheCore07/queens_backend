@@ -15,7 +15,12 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    }),
+  );
   app.use(cookieParser());
 
   app.useGlobalPipes(
@@ -31,11 +36,35 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
-  
+  // CORS Configuration
+  const frontendUrl = configService.get<string>('FRONTEND_URL');
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'https://queens-azure-seven.vercel.app', // Deine spezifische Frontend-URL
+  ];
+
+  if (frontendUrl) {
+    allowedOrigins.push(frontendUrl);
+  }
+
   app.enableCors({
-    origin: frontendUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        allowedOrigins.some((ao) => origin.startsWith(ao))
+      ) {
+        callback(null, true);
+      } else {
+        console.error(`CORS blocked for origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie',
   });
 
   const config = new DocumentBuilder()
@@ -48,7 +77,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  // If we are on Vercel, we don't call listen, we return the express instance
   if (process.env.VERCEL) {
     await app.init();
     return app.getHttpAdapter().getInstance();
@@ -56,10 +84,8 @@ async function bootstrap() {
 
   const port = configService.get<number>('PORT') ?? 3000;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
 }
 
-// Export for Vercel
 let server: any;
 export default async (req: any, res: any) => {
   if (!server) {
@@ -68,7 +94,6 @@ export default async (req: any, res: any) => {
   return server(req, res);
 };
 
-// Local development
 if (!process.env.VERCEL) {
   bootstrap().catch((err) => {
     console.error('Error starting application:', err);
