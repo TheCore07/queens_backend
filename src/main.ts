@@ -15,12 +15,12 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  app.use(
-    helmet({
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
-      crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-    }),
-  );
+  // Security: Helmet with CORS-friendly settings
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // Disable CSP for API
+  }));
+  
   app.use(cookieParser());
 
   app.useGlobalPipes(
@@ -36,35 +36,19 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // CORS Configuration
-  const frontendUrl = configService.get<string>('FRONTEND_URL');
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'https://queens-azure-seven.vercel.app', // Deine spezifische Frontend-URL
-  ];
-
-  if (frontendUrl) {
-    allowedOrigins.push(frontendUrl);
-  }
-
+  // Explicit CORS Configuration
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'https://queens-azure-seven.vercel.app';
+  
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-
-      if (
-        allowedOrigins.indexOf(origin) !== -1 ||
-        allowedOrigins.some((ao) => origin.startsWith(ao))
-      ) {
-        callback(null, true);
-      } else {
-        console.error(`CORS blocked for origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: [
+      'http://localhost:5173',
+      frontendUrl,
+      /\.vercel\.app$/, // Allow all vercel.app subdomains for flexibility
+    ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie',
+    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie, X-Requested-With',
+    exposedHeaders: ['Set-Cookie'],
   });
 
   const config = new DocumentBuilder()
@@ -86,6 +70,7 @@ async function bootstrap() {
   await app.listen(port);
 }
 
+// Export for Vercel
 let server: any;
 export default async (req: any, res: any) => {
   if (!server) {
@@ -94,6 +79,7 @@ export default async (req: any, res: any) => {
   return server(req, res);
 };
 
+// Local development
 if (!process.env.VERCEL) {
   bootstrap().catch((err) => {
     console.error('Error starting application:', err);
