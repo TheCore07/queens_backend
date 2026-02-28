@@ -12,6 +12,15 @@ export class UsersService {
     return this.userModel.find().exec();
   }
 
+  async findAllSortedByInfinity(): Promise<User[]> {
+    return this.userModel
+      .find({ infinitySolved: { $gt: 0 } })
+      .sort({ infinitySolved: -1 })
+      .select('username infinitySolved')
+      .limit(100)
+      .exec();
+  }
+
   async create(data: Partial<User>): Promise<UserDocument> {
     if (!data.email) {
       throw new ConflictException('Email is required');

@@ -88,4 +88,11 @@ export class GameController {
   getLeaderboard(@Query('date') date?: string) {
     return this.gameService.getLeaderboard(date);
   }
+
+  @Get('leaderboard/infinity')
+  @ApiOperation({ summary: 'Get the infinity leaderboard' })
+  @ApiResponse({ status: 200, description: 'Return the leaderboard.' })
+  getInfinityLeaderboard() {
+    return this.gameService.getInfinityLeaderboard();
+  }
 }

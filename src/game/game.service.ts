@@ -37,9 +37,7 @@ export class GameService {
     return this.createBoard(randomSize);
   }
 
-  async getDailyGame(
-    userId?: string,
-  ): Promise<QueensBoard & { isSolved?: boolean; userSolution?: any[] }> {
+  async getDailyGame(userId?: string): Promise<QueensBoard & { isSolved?: boolean; userSolution?: any[] }> {
     const currentDate = this.getCurrentDateString();
 
     const game = await this.gameModel.findOne({
@@ -103,15 +101,13 @@ export class GameService {
       };
     }
 
-    if (user.lastDailyDate !== currentDate) {
-      await this.usersService.updateStreak(userId, currentDate);
-    }
+    await this.usersService.updateStreak(userId, currentDate);
 
     const result = new this.gameResultModel({
       userId: new Types.ObjectId(userId),
       date: currentDate,
       timeInSeconds: submitDto.timeInSeconds,
-      userSolution: submitDto.solution, // Store the user's solution
+      userSolution: submitDto.solution,
     });
     await result.save();
 
@@ -172,10 +168,14 @@ export class GameService {
 
     return this.gameResultModel
       .find({ date: searchDate })
-      .populate('userId', 'username')
+      .populate('userId', 'username streak') // Include streak
       .sort({ timeInSeconds: 1 })
       .limit(100)
       .exec();
+  }
+
+  async getInfinityLeaderboard() {
+    return this.usersService.findAllSortedByInfinity();
   }
 
   @Cron('0 0 9 * * *')
