@@ -1,80 +1,94 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import express from 'express';
-import * as process from 'node:process';
-import { ConfigService } from '@nestjs/config';
+import * as express from 'express';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiCookieAuth,
+} from '@nestjs/swagger';
+import { CreateUserDto } from '../users/dto/create-user.dto';
+import { UsersService } from '../users/users.service';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
 
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({ status: 201, description: 'User successfully created.' })
+  @ApiResponse({ status: 409, description: 'User already exists.' })
+  async register(@Body() createUserDto: CreateUserDto) {
+    const user = await this.usersService.create(createUserDto);
+    // Remove password from response
+    const { password, ...result } = user.toObject();
+    return result;
+  }
+
   @Post('login')
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({ status: 200, description: 'Successfully logged in.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async login(
     @Body() body: LoginDto,
     @Res({ passthrough: true }) res: express.Response,
   ) {
-    const [accessToken, refreshToken] = await this.authService.login(
+    const { accessToken, refreshToken } = await this.authService.login(
       body.email,
       body.password,
     );
 
-    // sets the refresh token
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    this.authService.setCookies(res, accessToken, refreshToken);
 
     return { message: 'Successfully logged in.' };
   }
 
   @Post('refresh')
+  @ApiOperation({ summary: 'Refresh tokens' })
+  @ApiResponse({ status: 200, description: 'Tokens refreshed successfully.' })
+  @ApiCookieAuth()
   async refresh(
     @Req() req: express.Request,
     @Res({ passthrough: true }) res: express.Response,
   ) {
     const refreshToken = req.cookies['refresh_token'] as string;
 
-    const [accessToken, newRefreshToken] =
+    const { accessToken, refreshToken: newRefreshToken } =
       await this.authService.refresh(refreshToken);
 
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refresh_token', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    this.authService.setCookies(res, accessToken, newRefreshToken);
 
     return { message: 'Tokens refreshed successfully.' };
   }
 
   @Get('me')
-  async getMe(@Req() req: express.Request) {
-    const token = req.cookies['access_token'] as string;
-    return this.authService.getProfile(token);
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Return current user.' })
+  @ApiCookieAuth()
+  async getMe(@Req() req: any) {
+    return req.user;
   }
 
   @Post('logout')
+  @ApiOperation({ summary: 'Logout user' })
+  @ApiResponse({ status: 200, description: 'Successfully logged out.' })
   logout(@Res({ passthrough: true }) res: express.Response) {
     this.authService.logout(res);
+    return { message: 'Successfully logged out.' };
   }
 }

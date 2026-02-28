@@ -1,12 +1,5 @@
 import { QueenPosition } from '../types/QueenPosition.type';
 
-/**
- * Prüft:
- * - eine Queen pro Zeile
- * - eine Queen pro Spalte
- * - eine Queen pro Farbe
- * - keine diagonalen Angriffe
- */
 export function validateQueensSolution(queens: QueenPosition[]): boolean {
   const rows = new Set<number>();
   const cols = new Set<number>();
@@ -27,7 +20,7 @@ export function validateQueensSolution(queens: QueenPosition[]): boolean {
       const a = queens[i];
       const b = queens[j];
 
-      if (Math.abs(a.row - b.row) === Math.abs(a.col - b.col)) {
+      if (Math.abs(a.row - b.row) <= 1 && Math.abs(a.col - b.col) <= 1) {
         return false;
       }
     }

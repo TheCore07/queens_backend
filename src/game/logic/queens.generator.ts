@@ -1,10 +1,6 @@
 import { QueensBoard } from '../types/QueensBoard.type';
 import { BoardType } from '../types/Board.type';
 
-/**
- * Erzeugt eine valide N-Queens-Lösung
- * Rückgabe: index = row, value = col
- */
 function solveNQueens(size: number): number[] {
   const cols = Array(size).fill(-1);
 
@@ -12,7 +8,7 @@ function solveNQueens(size: number): number[] {
     for (let r = 0; r < row; r++) {
       const c = cols[r];
       if (c === col) return false;
-      if (Math.abs(c - col) === Math.abs(r - row)) return false;
+      if (Math.abs(r - row) <= 1 && Math.abs(c - col) <= 1) return false;
     }
     return true;
   }
@@ -38,10 +34,6 @@ function solveNQueens(size: number): number[] {
   return cols;
 }
 
-/**
- * Erstellt farbige Regionen (Flood-Fill-ähnlich)
- * Jede Region enthält exakt eine Queen
- */
 function generateRegions(size: number, queens: number[]): number[][] {
   const regions = Array.from({ length: size }, () => Array(size).fill(-1));
 
@@ -86,15 +78,12 @@ function generateRegions(size: number, queens: number[]): number[][] {
   return regions;
 }
 
-/**
- * Öffentliche API: erzeugt ein vollständiges Queens-Board
- */
 export function generateQueensBoard(size = 5): QueensBoard {
   const queens = solveNQueens(size);
   const regions = generateRegions(size, queens);
 
-  const board: BoardType = regions.map(row =>
-    row.map(color => ({
+  const board: BoardType = regions.map((row) =>
+    row.map((color) => ({
       color,
       hasQueen: false,
     })),
