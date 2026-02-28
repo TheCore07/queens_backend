@@ -15,12 +15,7 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  // Security: Helmet with CORS-friendly settings
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false, // Disable CSP for API
-  }));
-  
+  app.use(helmet());
   app.use(cookieParser());
 
   app.useGlobalPipes(
@@ -36,19 +31,13 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Explicit CORS Configuration
-  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'https://queens-azure-seven.vercel.app';
+  const frontendUrl = configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
   
   app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      frontendUrl,
-      /\.vercel\.app$/, // Allow all vercel.app subdomains for flexibility
-    ],
+    origin: [frontendUrl, 'http://localhost:5173'],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie, X-Requested-With',
-    exposedHeaders: ['Set-Cookie'],
+    allowedHeaders: 'Content-Type, Accept, Authorization, Cookie',
   });
 
   const config = new DocumentBuilder()
