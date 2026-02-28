@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ObjectId } from 'mongodb';
 import { ConfigService } from '@nestjs/config';
 import { StringValue } from 'ms';
-import express from 'express';
+import * as express from 'express';
 import * as bcrypt from 'bcryptjs';
 
 type JwtPayload = { sub: ObjectId; email: string };
@@ -28,7 +28,7 @@ export class AuthService {
       throw new UnauthorizedException('Password or email is incorrect');
     }
 
-    return this.getTokens(user._id, user.email);
+    return this.getTokens(user._id as any, user.email);
   }
 
   async refresh(refreshToken: string) {
@@ -70,26 +70,43 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  setCookies(res: express.Response, accessToken: string, refreshToken: string) {
-    const isProd = this.configService.get('NODE_ENV') === 'production';
+  setCookies(
+    res: express.Response,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    const isProd = this.configService.get('NODE_ENV') === 'production' || !!process.env.VERCEL;
+
+    const cookieOptions: express.CookieOptions = {
+      httpOnly: true,
+      secure: true, // Always true for SameSite: none
+      sameSite: 'none', // Critical for cross-domain Vercel deployments
+      path: '/',
+    };
 
     res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes - should ideally match expiration
+      ...cookieOptions,
+      maxAge: 15 * 60 * 1000, 
     });
 
     res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      ...cookieOptions,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
 
   logout(res: express.Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('access_token', { 
+        httpOnly: true, 
+        secure: true, 
+        sameSite: 'none', 
+        path: '/' 
+    });
+    res.clearCookie('refresh_token', { 
+        httpOnly: true, 
+        secure: true, 
+        sameSite: 'none', 
+        path: '/' 
+    });
   }
 }
