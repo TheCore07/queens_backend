@@ -180,12 +180,24 @@ export class GameService {
 
   @Cron('0 0 9 * * *')
   async createDailyGame() {
+    const currentDate = this.getCurrentDateString();
+
+    const existingGame = await this.gameModel.findOne({
+      date: currentDate,
+      type: 'daily',
+    });
+
+    if (existingGame) {
+      this.logger.log(`Daily Game for ${currentDate} already exists.`);
+      return { message: 'Daily game already exists', date: currentDate };
+    }
+
     const boardSize = this.getRandomSize();
     const queensBoard = this.createBoard(boardSize);
 
     const game = new this.gameModel({
       type: 'daily',
-      date: this.getCurrentDateString(),
+      date: currentDate,
       board: queensBoard.board,
       solution: queensBoard.solution,
     });
