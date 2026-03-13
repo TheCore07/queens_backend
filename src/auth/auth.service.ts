@@ -70,23 +70,22 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  setCookies(
-    res: express.Response,
-    accessToken: string,
-    refreshToken: string,
-  ) {
-    const isProd = this.configService.get('NODE_ENV') === 'production' || !!process.env.VERCEL;
+  setCookies(res: express.Response, accessToken: string, refreshToken: string) {
+    const isProd =
+      this.configService.get('NODE_ENV') === 'production' ||
+      !!process.env.VERCEL;
 
-    const cookieOptions: express.CookieOptions = {
+    const cookieOptions: any = {
       httpOnly: true,
-      secure: true, // Always true for SameSite: none
-      sameSite: 'none', // Critical for cross-domain Vercel deployments
+      secure: true,
+      sameSite: 'none',
       path: '/',
+      partitioned: true,
     };
 
     res.cookie('access_token', accessToken, {
       ...cookieOptions,
-      maxAge: 15 * 60 * 1000, 
+      maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refresh_token', refreshToken, {
@@ -96,17 +95,14 @@ export class AuthService {
   }
 
   logout(res: express.Response) {
-    res.clearCookie('access_token', { 
-        httpOnly: true, 
-        secure: true, 
-        sameSite: 'none', 
-        path: '/' 
-    });
-    res.clearCookie('refresh_token', { 
-        httpOnly: true, 
-        secure: true, 
-        sameSite: 'none', 
-        path: '/' 
-    });
+    const cookieOptions: any = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      partitioned: true,
+    };
+    res.clearCookie('access_token', cookieOptions);
+    res.clearCookie('refresh_token', cookieOptions);
   }
 }
