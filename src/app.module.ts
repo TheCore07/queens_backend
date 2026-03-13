@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { GameModule } from './game/game.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -14,6 +15,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     AuthModule,
     UsersModule,
     GameModule,
+    FeedbackModule,
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
