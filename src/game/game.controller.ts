@@ -6,6 +6,7 @@ import {
   Req,
   UseGuards,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { GameService } from './game.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -35,6 +36,16 @@ export class GameController {
   @ApiCookieAuth()
   queensDaily(@Req() req: any) {
     return this.gameService.getDailyGame(req.user?._id);
+  }
+
+  @Get('daily/cron-trigger')
+  @ApiOperation({ summary: 'Trigger daily game generation via cron' })
+  handleCron(@Req() req: any) {
+    const authHeader = req.headers['authorization'];
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      throw new ForbiddenException('Unauthorized Cron Attempt');
+    }
+    return this.gameService.createDailyGame();
   }
 
   @Get('infinity')
